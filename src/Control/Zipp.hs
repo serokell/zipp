@@ -149,7 +149,7 @@ makeLenses ''Layer
 with :: MonadThrow m => a -> Action dir a m r -> m (r, a)
 with _locus action = do
     let start = ZipperState { _locus, _loci = [], _dirty = False }
-    (r, ZipperState locus' [] _) <-
+    ~(r, ZipperState locus' [] _) <-
         action <* exit
             & runAction
             & (`runStateT`  start)
