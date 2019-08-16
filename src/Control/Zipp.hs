@@ -83,17 +83,17 @@ module Control.Zipp
     )
   where
 
-import           Control.Monad        (when, unless)
-import           Control.Monad.Catch  (Exception, MonadCatch (..),
-                                       MonadThrow (..))
-import           Control.Monad.State  (MonadState (..), MonadTrans (..),
-                                       StateT (..), execStateT)
+import           Control.Monad               (when, unless)
+import           Control.Monad.Catch         (Exception, MonadCatch (..),
+                                              MonadThrow (..))
+import           Control.Monad.State.Strict  (MonadState (..), MonadTrans (..),
+                                              StateT (..), execStateT)
 
-import           Data.Typeable        (Typeable)
+import           Data.Typeable               (Typeable)
 
-import           Lens.Micro.Platform  (SimpleGetter, Traversal', makeLenses,
-                                       singular, to, use, (%=), (&), (.=), (.~),
-                                       (^.), (^?))
+import           Lens.Micro.Platform         (SimpleGetter, Traversal',
+                                              makeLenses, singular, to, use,
+                                              (%=), (&), (.=), (.~), (^.), (^?))
 
 data ZipperState dir a m = ZipperState
     { _locus :: a
@@ -149,12 +149,16 @@ makeLenses ''Layer
 with :: MonadThrow m => a -> Action dir a m r -> m (r, a)
 with _locus action = do
     let start = ZipperState { _locus, _loci = [], _dirty = False }
-    ~(r, ZipperState locus' [] _) <-
-        action <* exit
-            & runAction
-            & (`runStateT`  start)
+    res <- action <* exit
+        & runAction
+        & (`runStateT` start)
 
-    return (r, locus')
+    case res of
+        (r, ZipperState locus' [] _) -> do
+            return (r, locus')
+
+        _ -> do
+            error "Impossible"
 
 -- | "Close" the zipper, reconstructing the edited object.
 exit :: MonadThrow m => Action dir a m ()
