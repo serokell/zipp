@@ -118,6 +118,7 @@ data Direction dir a m = Direction
     { designation :: dir            -- ^ The name of the direction
     , tearOut     :: a -> m a       -- ^ The "getter"
     , jamIn       :: a -> a -> m a  -- ^ The "setter": @whole@ -> @part@ -> @m whole@
+    , leave       :: a -> a -> m ()
     }
 
 -- | The action over edited object.
@@ -188,19 +189,19 @@ up = do
 
         prev : rest -> do
             isDirty <- use dirty
-
+            loc    <- use locus
             loci  .= rest
+
             if isDirty
             then do
-                loc  <- use locus
                 loc' <- lift $ (prev^.cameFrom.to jamIn) (prev^.place) loc
-
                 locus .= loc'
                 dirty .= True
 
             else do
                 locus .= prev^.place
                 dirty .= prev^.update
+                lift $ (prev^.cameFrom.to leave) (prev^.place) loc
 
             return $ prev^.cameFrom.to designation
 
@@ -302,6 +303,9 @@ fromTraversal designation traversal = Direction
 
     , jamIn = \s a -> do
         return $ s & singular traversal .~ a
+
+    , leave = \_ _ -> do
+        return ()
     }
 
 -------------------------------------------------------------------------------
